@@ -72,7 +72,7 @@ func (s *APIV1Service) CreateMemo(ctx context.Context, request *v1pb.CreateMemoR
 		slog.Warn("Failed to dispatch memo created webhook", err)
 	}
 	// Send notification to telegram if memo is not private.
-	//if memoMessage.Visibility != v1pb.Visibility_PRIVATE {
+	//	if memoMessage.Visibility != v1pb.Visibility_PRIVATE {
 	//	// fetch all telegram UserID
 	//	userSettings, err := s.Store.ListUserSettings(ctx, &store.FindUserSetting{Key: storepb.UserSettingKey_USER_SETTING_TELEGRAM_USER_ID})
 	//	if err != nil {
