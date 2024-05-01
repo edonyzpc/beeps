@@ -74,7 +74,6 @@ func (t *TelegramHandler) MessageHandle(ctx context.Context, bot *telegram.Bot, 
 	}
 
 	// Dynamically upsert tags from memo content.
-
 	//	nodes, err := parser.Parse(tokenizer.Tokenize(create.Content))
 	//	if err != nil {
 	//		return errors.Wrap(err, "Failed to parse content")
@@ -97,7 +96,6 @@ func (t *TelegramHandler) MessageHandle(ctx context.Context, bot *telegram.Bot, 
 	//			return errors.Wrap(err, "Failed to upsert tag")
 	//		}
 	//	}
-	//
 
 	// Create memo related resources.
 	for _, attachment := range attachments {
