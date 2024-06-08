@@ -36,10 +36,15 @@ const CommonContextProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     const initialWorkspace = async () => {
       const workspaceProfile = await workspaceServiceClient.getWorkspaceProfile({});
-      await workspaceSettingStore.listWorkspaceSettings();
+      // Initial fetch for workspace settings.
+      (async () => {
+        [WorkspaceSettingKey.GENERAL, WorkspaceSettingKey.MEMO_RELATED].forEach(async (key) => {
+          await workspaceSettingStore.fetchWorkspaceSetting(key);
+        });
+      })();
 
       const workspaceGeneralSetting =
-        workspaceSettingStore.getWorkspaceSettingByKey(WorkspaceSettingKey.WORKSPACE_SETTING_GENERAL).generalSetting ||
+        workspaceSettingStore.getWorkspaceSettingByKey(WorkspaceSettingKey.GENERAL).generalSetting ||
         WorkspaceGeneralSetting.fromPartial({});
       setCommonContext({
         locale: locale || workspaceGeneralSetting.customProfile?.locale || "en",

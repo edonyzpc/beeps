@@ -28,8 +28,7 @@ const SignIn = () => {
   const [remember, setRemember] = useState(true);
   const [identityProviderList, setIdentityProviderList] = useState<IdentityProvider[]>([]);
   const workspaceGeneralSetting =
-    workspaceSettingStore.getWorkspaceSettingByKey(WorkspaceSettingKey.WORKSPACE_SETTING_GENERAL).generalSetting ||
-    WorkspaceGeneralSetting.fromPartial({});
+    workspaceSettingStore.getWorkspaceSettingByKey(WorkspaceSettingKey.GENERAL).generalSetting || WorkspaceGeneralSetting.fromPartial({});
 
   useEffect(() => {
     const fetchIdentityProviderList = async () => {
@@ -85,7 +84,7 @@ const SignIn = () => {
       navigateTo("/");
     } catch (error: any) {
       console.error(error);
-      toast.error((error as ClientError).details || t("message.login-failed"));
+      toast.error((error as ClientError).details || "Failed to sign in.");
     }
     actionBtnLoadingState.setFinish();
   };
@@ -192,7 +191,7 @@ const SignIn = () => {
                   size="md"
                   onClick={() => handleSignInWithIdentityProvider(identityProvider)}
                 >
-                  {t("common.sign-in-with", { provider: identityProvider.name })}
+                  {t("common.sign-in-with", { provider: identityProvider.title })}
                 </Button>
               ))}
             </div>

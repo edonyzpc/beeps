@@ -14,7 +14,7 @@ import (
 )
 
 func (s *APIV1Service) CreateIdentityProvider(ctx context.Context, request *v1pb.CreateIdentityProviderRequest) (*v1pb.IdentityProvider, error) {
-	currentUser, err := getCurrentUser(ctx, s.Store)
+	currentUser, err := s.GetCurrentUser(ctx)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get user: %v", err)
 	}
@@ -78,6 +78,8 @@ func (s *APIV1Service) UpdateIdentityProvider(ctx context.Context, request *v1pb
 		switch field {
 		case "title":
 			update.Name = &request.IdentityProvider.Title
+		case "identifier_filter":
+			update.IdentifierFilter = &request.IdentityProvider.IdentifierFilter
 		case "config":
 			update.Config = convertIdentityProviderConfigToStore(request.IdentityProvider.Type, request.IdentityProvider.Config)
 		}

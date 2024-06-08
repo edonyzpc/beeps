@@ -1,16 +1,17 @@
+import { Button } from "@mui/joy";
 import { ClientError } from "nice-grpc-web";
 import { useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
 import { Link, useParams } from "react-router-dom";
 import Icon from "@/components/Icon";
-import MemoEditor from "@/components/MemoEditor";
+import showMemoEditorDialog from "@/components/MemoEditor/MemoEditorDialog";
 import MemoView from "@/components/MemoView";
 import MemosAds from "@/components/MemosAds";
 import MemosMultiplexAds from "@/components/MemosMultiplexAds";
 import MobileHeader from "@/components/MobileHeader";
 import useCurrentUser from "@/hooks/useCurrentUser";
 import useNavigateTo from "@/hooks/useNavigateTo";
-import { MemoNamePrefix, useMemoStore } from "@/store/v1";
+import { useMemoStore } from "@/store/v1";
 import { MemoRelation_Type } from "@/types/proto/api/v1/memo_relation_service";
 import { Memo } from "@/types/proto/api/v1/memo_service";
 import { useTranslate } from "@/utils/i18n";
@@ -47,8 +48,8 @@ const MemoDetail = () => {
     }
 
     (async () => {
-      if (memo.parentId) {
-        memoStore.getOrFetchMemoByName(`${MemoNamePrefix}${memo.parentId}`).then((memo: Memo) => {
+      if (memo.parent) {
+        memoStore.getOrFetchMemoByName(memo.parent).then((memo: Memo) => {
           setParentMemo(memo);
         });
       } else {
@@ -61,6 +62,15 @@ const MemoDetail = () => {
   if (!memo) {
     return null;
   }
+
+  const handleShowCommentEditor = () => {
+    showMemoEditorDialog({
+      placeholder: t("editor.add-your-comment-here"),
+      parentMemoName: memo.name,
+      onConfirm: handleCommentCreated,
+      cacheKey: `${memo.name}-${memo.updateTime}-comment`,
+    });
+  };
 
   const handleCommentCreated = async (memoCommentName: string) => {
     await memoStore.getOrFetchMemoByName(memoCommentName);
@@ -104,32 +114,34 @@ const MemoDetail = () => {
           </h2>
           <div className="relative mx-auto flex-grow w-full min-h-full flex flex-col justify-start items-start gap-y-1">
             {comments.length === 0 ? (
-              <div className="w-full flex flex-col justify-center items-center py-6 mb-2">
-                <Icon.MessageCircle strokeWidth={1} className="w-8 h-auto text-gray-400" />
-                <p className="text-gray-400 italic text-sm">{t("memo.comment.no-comment")}</p>
-              </div>
+              currentUser && (
+                <div className="w-full flex flex-row justify-center items-center py-6">
+                  <Button
+                    variant="plain"
+                    color="neutral"
+                    endDecorator={<Icon.MessageCircle className="w-5 h-auto text-gray-500" />}
+                    onClick={handleShowCommentEditor}
+                  >
+                    <span className="font-normal text-gray-500">{t("memo.comment.write-a-comment")}</span>
+                  </Button>
+                </div>
+              )
             ) : (
               <>
-                <div className="w-full flex flex-row justify-start items-center pl-3 mb-3">
-                  <Icon.MessageCircle className="w-5 h-auto text-gray-400 mr-1" />
-                  <span className="text-gray-400 text-sm">{t("memo.comment.self")}</span>
-                  <span className="text-gray-400 text-sm ml-0.5">({comments.length})</span>
+                <div className="w-full flex flex-row justify-between items-center px-3 mb-2">
+                  <div className="flex flex-row justify-start items-center">
+                    <Icon.MessageCircle className="w-5 h-auto text-gray-400 mr-1" />
+                    <span className="text-gray-400 text-sm">{t("memo.comment.self")}</span>
+                    <span className="text-gray-400 text-sm ml-1">({comments.length})</span>
+                  </div>
+                  <Button variant="plain" color="neutral" onClick={handleShowCommentEditor}>
+                    <span className="font-normal text-gray-500">{t("memo.comment.write-a-comment")}</span>
+                  </Button>
                 </div>
                 {comments.map((comment) => (
-                  <MemoView key={`${comment.name}-${comment.displayTime}`} memo={comment} showCreator />
+                  <MemoView key={`${comment.name}-${comment.displayTime}`} memo={comment} showCreator compact />
                 ))}
               </>
-            )}
-
-            {/* Only show comment editor when user login */}
-            {currentUser && (
-              <MemoEditor
-                key={memo.name}
-                cacheKey={`comment-editor-${memo.name}`}
-                placeholder={t("editor.add-your-comment-here")}
-                parentMemoName={memo.name}
-                onConfirm={handleCommentCreated}
-              />
             )}
           </div>
         </div>

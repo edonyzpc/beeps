@@ -9,7 +9,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	grpc_recovery "github.com/grpc-ecosystem/go-grpc-middleware/recovery"
 	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 	"github.com/pkg/errors"
 	"github.com/soheilhy/cmux"
 	"google.golang.org/grpc"
@@ -19,6 +21,7 @@ import (
 	apiv1 "github.com/usememos/memos/server/router/api/v1"
 	"github.com/usememos/memos/server/router/frontend"
 	"github.com/usememos/memos/server/router/rss"
+	s3objectpresigner "github.com/usememos/memos/server/service/s3_object_presigner"
 	versionchecker "github.com/usememos/memos/server/service/version_checker"
 	"github.com/usememos/memos/store"
 )
@@ -42,6 +45,7 @@ func NewServer(ctx context.Context, profile *profile.Profile, store *store.Store
 	echoServer.Debug = true
 	echoServer.HideBanner = true
 	echoServer.HidePort = true
+	echoServer.Use(middleware.Recover())
 	s.echoServer = echoServer
 
 	workspaceBasicSetting, err := s.getOrUpsertWorkspaceBasicSetting(ctx)
@@ -60,21 +64,22 @@ func NewServer(ctx context.Context, profile *profile.Profile, store *store.Store
 		return c.String(http.StatusOK, "Service ready.")
 	})
 
-	// Only serve frontend when it's enabled.
-	if profile.Frontend {
-		frontendService := frontend.NewFrontendService(profile, store)
-		frontendService.Serve(ctx, echoServer)
-	}
+	// Serve frontend resources.
+	frontend.NewFrontendService(profile, store).Serve(ctx, echoServer)
 
 	rootGroup := echoServer.Group("")
 
 	// Create and register RSS routes.
 	rss.NewRSSService(s.Profile, s.Store).RegisterRoutes(rootGroup)
 
-	grpcServer := grpc.NewServer(grpc.ChainUnaryInterceptor(
-		apiv1.NewLoggerInterceptor().LoggerInterceptor,
-		apiv1.NewGRPCAuthInterceptor(store, secret).AuthenticationInterceptor,
-	))
+	grpcServer := grpc.NewServer(
+		// Override the maximum receiving message size to 100M for uploading large resources.
+		grpc.MaxRecvMsgSize(100*1024*1024),
+		grpc.ChainUnaryInterceptor(
+			apiv1.NewLoggerInterceptor().LoggerInterceptor,
+			grpc_recovery.UnaryServerInterceptor(),
+			apiv1.NewGRPCAuthInterceptor(store, secret).AuthenticationInterceptor,
+		))
 	s.grpcServer = grpcServer
 
 	apiV1Service := apiv1.NewAPIV1Service(s.Secret, profile, store, grpcServer)
@@ -87,7 +92,7 @@ func NewServer(ctx context.Context, profile *profile.Profile, store *store.Store
 }
 
 func (s *Server) Start(ctx context.Context) error {
-	address := fmt.Sprintf(":%d", s.Profile.Port)
+	address := fmt.Sprintf("%s:%d", s.Profile.Addr, s.Profile.Port)
 	listener, err := net.Listen("tcp", address)
 	if err != nil {
 		return errors.Wrap(err, "failed to listen")
@@ -136,6 +141,7 @@ func (s *Server) Shutdown(ctx context.Context) {
 
 func (s *Server) StartBackgroundRunners(ctx context.Context) {
 	go versionchecker.NewVersionChecker(s.Store, s.Profile).Start(ctx)
+	go s3objectpresigner.NewS3ObjectPresigner(s.Store).Start(ctx)
 }
 
 func (s *Server) getOrUpsertWorkspaceBasicSetting(ctx context.Context) (*storepb.WorkspaceBasicSetting, error) {
@@ -150,7 +156,7 @@ func (s *Server) getOrUpsertWorkspaceBasicSetting(ctx context.Context) (*storepb
 	}
 	if modified {
 		workspaceSetting, err := s.Store.UpsertWorkspaceSetting(ctx, &storepb.WorkspaceSetting{
-			Key:   storepb.WorkspaceSettingKey_WORKSPACE_SETTING_BASIC,
+			Key:   storepb.WorkspaceSettingKey_BASIC,
 			Value: &storepb.WorkspaceSetting_BasicSetting{BasicSetting: workspaceBasicSetting},
 		})
 		if err != nil {

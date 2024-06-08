@@ -4,12 +4,12 @@ import (
 	"context"
 
 	"github.com/pkg/errors"
-	"github.com/yourselfhosted/gomark/ast"
-	"github.com/yourselfhosted/gomark/parser"
-	"github.com/yourselfhosted/gomark/parser/tokenizer"
-	"github.com/yourselfhosted/gomark/restore"
+	"github.com/usememos/gomark/ast"
+	"github.com/usememos/gomark/parser"
+	"github.com/usememos/gomark/parser/tokenizer"
+	"github.com/usememos/gomark/restore"
 
-	getter "github.com/usememos/memos/plugin/http-getter"
+	"github.com/usememos/memos/plugin/httpgetter"
 	v1pb "github.com/usememos/memos/proto/gen/api/v1"
 )
 
@@ -33,7 +33,7 @@ func (*APIV1Service) RestoreMarkdown(_ context.Context, request *v1pb.RestoreMar
 }
 
 func (*APIV1Service) GetLinkMetadata(_ context.Context, request *v1pb.GetLinkMetadataRequest) (*v1pb.LinkMetadata, error) {
-	htmlMeta, err := getter.GetHTMLMeta(request.Link)
+	htmlMeta, err := httpgetter.GetHTMLMeta(request.Link)
 	if err != nil {
 		return nil, err
 	}
